@@ -16,9 +16,9 @@
         <spring-boot.version>2.7.18</spring-boot.version>
     </properties>
 
-    <name>com.tabariyya</name>
-    <description>SynCache Binding For Java</description>
-    <url>https://github.com/tabariyya/synCache-java.git</url>
+    <name>spring-jwt</name>
+    <description>Spring Boot JWT Authentication Library</description>
+    <url>https://github.com/tabariyya/spring-jwt</url>
 
     <licenses>
         <license>
@@ -37,9 +37,9 @@
     </developers>
 
     <scm>
-        <url>https://github.com/tabariyya/synCache-java</url>
-        <connection>scm:git:git://github.com/tabariyya/synCache-java.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com:tabariyya/synCache-java.git</developerConnection>
+        <url>https://github.com/tabariyya/spring-jwt</url>
+        <connection>scm:git:git://github.com/tabariyya/spring-jwt.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com:tabariyya/spring-jwt.git</developerConnection>
     </scm>
 
 

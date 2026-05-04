@@ -6,14 +6,14 @@
 
     <groupId>com.tabariyya</groupId>
     <artifactId>spring-jwt</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.3</version>
     <packaging>jar</packaging>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-boot.version>2.7.18</spring-boot.version>
+        <spring-boot.version>4.0.6</spring-boot.version>
     </properties>
 
     <name>spring-jwt</name>
@@ -56,17 +56,22 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- Spring AOP for @Aspect / @Around -->
+        <!-- Spring AOP for @Aspect / @Around (spring-boot-starter-aop removed in SB4) -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aop</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
             <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.0.1</version>
+            <version>3.0.3</version>
         </dependency>
 
         <!-- Spring Web for HttpServletRequest, Filter, RequestContextHolder -->

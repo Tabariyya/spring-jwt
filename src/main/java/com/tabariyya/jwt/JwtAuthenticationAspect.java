@@ -5,12 +5,13 @@ import com.google.gson.JsonObject;
 import com.tabariyya.utils.jwt.JwtConsumer;
 import com.tabariyya.utils.jwt.TokenType;
 import io.jsonwebtoken.Claims;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -21,6 +22,7 @@ import java.lang.reflect.Parameter;
 
 @Component
 @Aspect
+@ConditionalOnProperty(name = "JwtAuthenticationAspect.enabled", matchIfMissing = true)
 public class JwtAuthenticationAspect {
     private final JwtConsumer jwtConsumer;
 

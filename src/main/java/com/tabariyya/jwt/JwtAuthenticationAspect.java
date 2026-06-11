@@ -18,6 +18,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.UUID;
 
 
 @Component
@@ -56,17 +57,24 @@ public class JwtAuthenticationAspect {
             throw new UnauthorizedException();
         }
 
-        for (String condition : jwtAuthenticated.value()) {
-            String[] parts = condition.split("=");
-            if (parts.length != 2) {
+        for (Claim claim : jwtAuthenticated.value()) {
+            JsonElement element = jwtPayload.get(claim.key());
+            if (element == null || !element.getAsString().equals(claim.value())) {
                 throw new UnauthorizedException();
             }
+        }
 
-            String key = parts[0].trim();
-            String expectedValue = parts[1].trim();
-
-            JsonElement claimElement = jwtPayload.get(key);
-            if (claimElement == null || !claimElement.getAsString().equals(expectedValue)) {
+        Claim[] anyOfClaims = jwtAuthenticated.anyOf();
+        if (anyOfClaims.length > 0) {
+            boolean anyMatched = false;
+            for (Claim claim : anyOfClaims) {
+                JsonElement element = jwtPayload.get(claim.key());
+                if (element != null && element.getAsString().equals(claim.value())) {
+                    anyMatched = true;
+                    break;
+                }
+            }
+            if (!anyMatched) {
                 throw new UnauthorizedException();
             }
         }
@@ -78,17 +86,25 @@ public class JwtAuthenticationAspect {
         Object[] args = joinPoint.getArgs();
         Parameter[] parameters = method.getParameters();
         JsonElement userIdClaim = jwtPayload.get(Claims.SUBJECT);
-        if (userIdClaim != null && userIdClaim.isJsonPrimitive() && userIdClaim.getAsJsonPrimitive().isString()) {
-            int userId = userIdClaim.getAsInt();
+        if (userIdClaim != null && userIdClaim.isJsonPrimitive()) {
+            String rawUserId = userIdClaim.getAsString();
             for (int i = 0; i < parameters.length; i++) {
-                if (parameters[i].getName().equals("userId") && parameters[i].getType().equals(Integer.class)) {
-                    args[i] = userId;
+                if (parameters[i].getName().equals("userId")) {
+                    args[i] = convertUserId(rawUserId, parameters[i].getType());
                     break;
                 }
             }
         }
 
         return joinPoint.proceed(args);
+    }
+
+    private Object convertUserId(String raw, Class<?> type) {
+        if (type == String.class) return raw;
+        if (type == Integer.class || type == int.class) return Integer.parseInt(raw);
+        if (type == Long.class || type == long.class) return Long.parseLong(raw);
+        if (type == UUID.class) return UUID.fromString(raw);
+        throw new UnauthorizedException();
     }
 
     private String extractJwtFromAuthorizationHeader(String authorizationHeader) {

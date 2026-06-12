@@ -60,10 +60,7 @@ public class OpenApiConfig {
 
                 List<Parameter> params = operation.getParameters();
                 if (params != null) {
-                    params.removeIf(p ->
-                            "userId".equals(p.getName())
-                                    && "integer".equals(p.getSchema().getType())
-                    );
+                    params.removeIf(p -> "userId".equals(p.getName()));
                 }
             }
             return operation;

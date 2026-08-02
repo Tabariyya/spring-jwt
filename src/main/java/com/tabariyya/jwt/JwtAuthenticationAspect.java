@@ -11,6 +11,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.slf4j.MDC;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -79,6 +80,7 @@ public class JwtAuthenticationAspect {
             }
         }
 
+        boolean mdcSet = false;
         request.setAttribute("jwtPayload", jwtPayload);
 
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
@@ -88,6 +90,8 @@ public class JwtAuthenticationAspect {
         JsonElement userIdClaim = jwtPayload.get(Claims.SUBJECT);
         if (userIdClaim != null && userIdClaim.isJsonPrimitive()) {
             String rawUserId = userIdClaim.getAsString();
+            MDC.put("userId", rawUserId);
+            mdcSet=true;
             for (int i = 0; i < parameters.length; i++) {
                 if (parameters[i].getName().equals("userId")) {
                     args[i] = convertUserId(rawUserId, parameters[i].getType());
@@ -96,7 +100,13 @@ public class JwtAuthenticationAspect {
             }
         }
 
-        return joinPoint.proceed(args);
+        try {
+            return joinPoint.proceed(args);
+        } finally {
+            if (mdcSet) {
+                MDC.remove("userId");
+            }
+        }
     }
 
     private Object convertUserId(String raw, Class<?> type) {

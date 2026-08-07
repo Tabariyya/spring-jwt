@@ -12,24 +12,44 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.convert.ApplicationConversionService;
+import org.springframework.core.MethodParameter;
+import org.springframework.core.convert.ConversionException;
+import org.springframework.core.convert.ConversionService;
+import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.UUID;
 
 
 @Component
 @Aspect
 @ConditionalOnProperty(name = "JwtAuthenticationAspect.enabled", matchIfMissing = true)
 public class JwtAuthenticationAspect {
-    private final JwtConsumer jwtConsumer;
+    private static final TypeDescriptor STRING_TYPE = TypeDescriptor.valueOf(String.class);
 
-    public JwtAuthenticationAspect(JwtConsumer jwtConsumer) {
+    private final JwtConsumer jwtConsumer;
+    private final ConversionService conversionService;
+
+    /**
+     * @param mvcConversionService the MVC conversion service, which Spring Boot has already populated with every
+     *                             {@code Converter}, {@code ConverterFactory} and {@code Formatter} bean the
+     *                             application declares — so a consumer teaches this aspect about a custom user id
+     *                             type simply by declaring such a bean.
+     * @param conversionService    any other single {@code ConversionService} bean, used when there is no MVC one.
+     */
+    public JwtAuthenticationAspect(JwtConsumer jwtConsumer,
+                                   @Qualifier("mvcConversionService") ObjectProvider<ConversionService> mvcConversionService,
+                                   ObjectProvider<ConversionService> conversionService) {
         this.jwtConsumer = jwtConsumer;
+        this.conversionService = mvcConversionService.getIfAvailable(
+                () -> conversionService.getIfUnique(ApplicationConversionService::getSharedInstance));
     }
 
     @Around("@within(com.tabariyya.jwt.JwtAuthenticated) || @annotation(com.tabariyya.jwt.JwtAuthenticated)")
@@ -94,7 +114,7 @@ public class JwtAuthenticationAspect {
             mdcSet=true;
             for (int i = 0; i < parameters.length; i++) {
                 if (parameters[i].getName().equals("userId")) {
-                    args[i] = convertUserId(rawUserId, parameters[i].getType());
+                    args[i] = convertUserId(rawUserId, new MethodParameter(method, i));
                     break;
                 }
             }
@@ -109,12 +129,19 @@ public class JwtAuthenticationAspect {
         }
     }
 
-    private Object convertUserId(String raw, Class<?> type) {
-        if (type == String.class) return raw;
-        if (type == Integer.class || type == int.class) return Integer.parseInt(raw);
-        if (type == Long.class || type == long.class) return Long.parseLong(raw);
-        if (type == UUID.class) return UUID.fromString(raw);
-        throw new UnauthorizedException();
+    private Object convertUserId(String raw, MethodParameter parameter) {
+        TypeDescriptor targetType = new TypeDescriptor(parameter);
+        if (!conversionService.canConvert(STRING_TYPE, targetType)) {
+            throw new IllegalStateException("Cannot convert the JWT subject to the 'userId' parameter type "
+                    + targetType.getType().getName() + " of " + parameter.getExecutable()
+                    + ". Declare a Converter<String, " + targetType.getType().getSimpleName() + "> bean.");
+        }
+        try {
+            return conversionService.convert(raw, STRING_TYPE, targetType);
+        } catch (ConversionException ex) {
+            // The token carries a subject that is not a valid id of the expected type.
+            throw new UnauthorizedException();
+        }
     }
 
     private String extractJwtFromAuthorizationHeader(String authorizationHeader) {
